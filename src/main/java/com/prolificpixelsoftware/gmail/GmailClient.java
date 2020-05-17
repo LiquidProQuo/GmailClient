@@ -17,9 +17,7 @@ import com.google.api.services.gmail.GmailScopes;
 import com.google.api.services.gmail.model.ListMessagesResponse;
 import com.google.api.services.gmail.model.Message;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -50,7 +48,7 @@ public class GmailClient {
 	private void initialize(List<String> scopes) throws GeneralSecurityException, IOException {
 		// Build a new authorized API client internalService.
 		final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-		internalService = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT, scopes))
+		internalService = new Gmail.Builder(HTTP_TRANSPORT, JacksonFactory.getDefaultInstance(), getCredentials(HTTP_TRANSPORT, scopes))
 				.setApplicationName(APPLICATION_NAME)
 				.build();
 	}
@@ -87,7 +85,7 @@ public class GmailClient {
 		return fullMessages;
 	}
 
-	public static List<SimpleEmail> getSimpleEmailsByQuery(String query) throws IOException {
+	public List<SimpleEmail> getSimpleEmailsByQuery(String query) throws IOException {
 		return toSimpleEmails(getMessagesByQuery(query));
 	}
 
@@ -134,19 +132,59 @@ public class GmailClient {
 	}
 
 	public static class SimpleEmail {
-		private Date date;
-		private String html;
+		private static final String FROM_KEY = "From:";
+		private static final String TO_KEY = "To:";
+		private static final String SUBJECT_KEY = "Subject:";
 
-		SimpleEmail(Date date, String html) {
+		private Date date;
+		private String content;
+		private String subject;
+		private String to;
+		private String from;
+
+		SimpleEmail(Date date, String content) {
 			this.date = date;
-			this.html = html;
+			this.content = content;
+			populateDetails(content);
 		}
 
 		public Date getDate() {
 			return date;
 		}
-		public String getHtml() {
-			return html;
+		public String getContent() {
+			return content;
+		}
+		public String getSubject() {
+			return subject;
+		}
+		public String getTo() {
+			return to;
+		}
+		public String getFrom() {
+			return from;
+		}
+
+		private void populateDetails(String content) {
+			List<String> lines = new BufferedReader(new StringReader(content)).lines().collect(Collectors.toList());
+			for (String line : lines) {
+				if (isPopulated()) {
+					return;
+				}
+
+				if (line.startsWith(FROM_KEY)) {
+					from = line.substring(FROM_KEY.length()).trim();
+				}
+				if (line.startsWith(TO_KEY)) {
+					to = line.substring(TO_KEY.length()).trim();
+				}
+				if (line.startsWith(SUBJECT_KEY)) {
+					subject = line.substring(SUBJECT_KEY.length()).trim();
+				}
+			}
+		}
+
+		private boolean isPopulated() {
+			return subject != null && to != null && from != null;
 		}
 	}
 }
