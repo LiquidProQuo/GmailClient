@@ -9,33 +9,34 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 public class GmailClientTest {
 
 	private static final long ONE_DAY = 1000 * 60 * 60 * 24;
 
 	/**
-	 * NB: Will obviously fail if we haven't received any emails in 24 hours.
+	 * NB: This is an integration test and will obviously fail if we haven't received any emails in 24 hours.
 	 *
 	 * @throws GeneralSecurityException - from Gmail Api
 	 * @throws IOException - from Gmail Api
 	 */
 	@Test
-	public void testGetTodaysEmailsFromGmail() throws GeneralSecurityException, IOException {
-		GmailClient gmailClient = new GmailClient();
+	public void testGetTodaysEmailsFromGmailAsSimpleEmails() throws GeneralSecurityException, IOException {
+		GmailClient gmailClient = new ReadOnlyGmailClient();
 
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTimeInMillis(System.currentTimeMillis() - ONE_DAY);
 		String formattedDateString = new SimpleDateFormat("yyyy/MM/dd").format(calendar.getTime());
 		String query = "after:" + formattedDateString;
 
-		List<GmailClient.SimpleEmail> emails =  gmailClient.getSimpleEmailsByQuery(query);
+		List<SimpleEmail> emails =  SimpleEmail.fromMessages(gmailClient.getMessagesByQuery(query));
 		assertNotNull(emails);
 		assertFalse(emails.isEmpty());
 
 		System.out.println("Num results: " + emails.size());
-		for (GmailClient.SimpleEmail email : emails) {
+		for (SimpleEmail email : emails) {
 			String subject = email.getSubject();
 			Date date = email.getDate();
 			String to = email.getTo();

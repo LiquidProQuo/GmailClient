@@ -9,24 +9,34 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.client.util.Base64;
-import com.google.api.client.util.StringUtils;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.gmail.Gmail;
-import com.google.api.services.gmail.GmailScopes;
 import com.google.api.services.gmail.model.ListMessagesResponse;
 import com.google.api.services.gmail.model.Message;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
+/**
+ * Simple Gmail Client *currently* configured for Read-Only operations on caller's Gmail account.
+ * Pre-Reqs: Leverages an existing Gmail App whose client_secret.json is placed in the resources folder.
+ *
+ * NB: On first run an auth link will be printed to console. Confirm to give your app account access with the
+ * specified Scopes requested.
+ * If these scopes have already been approved by this account, this step can be skipped by placing the
+ * StoredCredential file in a folder labeled "credentials" in the root directory.
+ *
+ */
 public class GmailClient {
-	private static final String APPLICATION_NAME = "Gmail API Java Quickstart";
+	private static final String APPLICATION_NAME = "Gmail API Client";
 	private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 	private static final String CREDENTIALS_FOLDER = "credentials"; // Directory to store user credentials.
-	private static final String USER = "me";
+	private static final String USER_SELF = "me";
 
 	// Note the leading / is required when being referenced in a class not on the level of src/main/java
 	private static final String CLIENT_SECRET_DIR = "/client_secret.json";
@@ -37,10 +47,6 @@ public class GmailClient {
 	 * Global instance of the scopes required by this quickstart.
 	 * If modifying these scopes, delete your previously saved credentials/ folder.
 	 */
-	public GmailClient() throws GeneralSecurityException, IOException {
-		this(GmailScopes.GMAIL_READONLY);
-	}
-
 	public GmailClient(String scope) throws GeneralSecurityException, IOException {
 		initialize(Collections.singletonList(scope));
 	}
@@ -73,20 +79,21 @@ public class GmailClient {
 		return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user");
 	}
 
-	private static List<Message> getMessagesByQuery(String query) throws IOException {
+
+	public List<Message> getMessagesByQuery(String query) throws IOException {
+		return getMessagesByQuery(query, USER_SELF);
+	}
+
+	public List<Message> getMessagesByQuery(String query, String user) throws IOException {
 		List<Message> fullMessages = new ArrayList<>();
-		List<Message> partialMessages = listMessagesMatchingQuery(internalService, USER, query);
+		List<Message> partialMessages = listMessagesMatchingQuery(internalService, user, query);
 
 		for (Message partialMessage : partialMessages) {
-			Message fullMessage = internalService.users().messages().get(USER, partialMessage.getId()).setFormat("raw").execute();
+			Message fullMessage = internalService.users().messages().get(user, partialMessage.getId()).setFormat("raw").execute();
 			fullMessages.add(fullMessage);
 		}
 
 		return fullMessages;
-	}
-
-	public List<SimpleEmail> getSimpleEmailsByQuery(String query) throws IOException {
-		return toSimpleEmails(getMessagesByQuery(query));
 	}
 
 	/**
@@ -96,13 +103,12 @@ public class GmailClient {
 	 * @param userId User's email address. The special value "me"
 	 * can be used to indicate the authenticated user.
 	 * @param query String used to filter the Messages listed.
-	 * @throws IOException
 	 */
-	private static List<Message> listMessagesMatchingQuery(Gmail service, String userId,
+	private List<Message> listMessagesMatchingQuery(Gmail service, String userId,
 														   String query) throws IOException {
 		ListMessagesResponse response = service.users().messages().list(userId).setQ(query).execute();
 
-		List<Message> messages = new ArrayList<Message>();
+		List<Message> messages = new ArrayList<>();
 		while (response.getMessages() != null) {
 			messages.addAll(response.getMessages());
 			if (response.getNextPageToken() == null) {
@@ -114,77 +120,5 @@ public class GmailClient {
 		}
 
 		return messages;
-	}
-
-	private static SimpleEmail toSimpleEmail(Message message) {
-		String encodedData = message.getRaw();
-		byte[] decodedData = Base64.decodeBase64(encodedData);
-		String body = StringUtils.newStringUtf8(decodedData);
-		Date date = new Date(message.getInternalDate());
-		return new SimpleEmail(date, body);
-	}
-
-	private static List<SimpleEmail> toSimpleEmails(List<Message> messages) {
-		if (messages == null || messages.isEmpty()) {
-			return Collections.emptyList();
-		}
-		return messages.stream().map(GmailClient::toSimpleEmail).collect(Collectors.toList());
-	}
-
-	public static class SimpleEmail {
-		private static final String FROM_KEY = "From:";
-		private static final String TO_KEY = "To:";
-		private static final String SUBJECT_KEY = "Subject:";
-
-		private Date date;
-		private String content;
-		private String subject;
-		private String to;
-		private String from;
-
-		SimpleEmail(Date date, String content) {
-			this.date = date;
-			this.content = content;
-			populateDetails(content);
-		}
-
-		public Date getDate() {
-			return date;
-		}
-		public String getContent() {
-			return content;
-		}
-		public String getSubject() {
-			return subject;
-		}
-		public String getTo() {
-			return to;
-		}
-		public String getFrom() {
-			return from;
-		}
-
-		private void populateDetails(String content) {
-			List<String> lines = new BufferedReader(new StringReader(content)).lines().collect(Collectors.toList());
-			for (String line : lines) {
-				if (isPopulated()) {
-					return;
-				}
-
-				if (line.startsWith(FROM_KEY)) {
-					from = line.substring(FROM_KEY.length()).trim();
-				}
-				if (line.startsWith(TO_KEY)) {
-					to = line.substring(TO_KEY.length()).trim();
-				}
-				if (line.startsWith(SUBJECT_KEY)) {
-					subject = line.substring(SUBJECT_KEY.length()).trim();
-				}
-			}
-		}
-
-		private boolean isPopulated() {
-			return subject != null && to != null && from != null;
-		}
 	}
 }
