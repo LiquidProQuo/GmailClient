@@ -1,4 +1,4 @@
-package com.prolificpixelsoftware.gmail;
+package com.liquidproquo.gmail;
 
 import org.junit.Test;
 
@@ -17,7 +17,7 @@ public class GmailClientTest {
 	private static final long ONE_DAY = 1000 * 60 * 60 * 24;
 
 	/**
-	 * NB: This is an integration test and will obviously fail if we haven't received any emails in 24 hours.
+	 * NB: This really is an integration test and will obviously fail if we haven't received any emails in 24 hours.
 	 *
 	 * @throws GeneralSecurityException - from Gmail Api
 	 * @throws IOException - from Gmail Api

@@ -1,4 +1,4 @@
-package com.prolificpixelsoftware.gmail;
+package com.liquidproquo.gmail;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -24,12 +24,14 @@ import java.util.List;
 
 /**
  * Simple Gmail Client *currently* configured for Read-Only operations on caller's Gmail account.
- * Pre-Reqs: Leverages an existing Gmail App whose client_secret.json is placed in the resources folder.
+ * Pre-Reqs: Leverages an existing Google Cloud Platform Project whose client_secret.json is placed in the resources folder.
  *
  * NB: On first run an auth link will be printed to console. Confirm to give your app account access with the
- * specified Scopes requested.
+ * specified scopes requested.
  * If these scopes have already been approved by this account, this step can be skipped by placing the
  * StoredCredential file in a folder labeled "credentials" in the root directory.
+ *
+ * Base is lifted from: https://github.com/gsuitedevs/java-samples/blob/master/gmail/quickstart/src/main/java/GmailQuickstart.java
  *
  */
 public class GmailClient {

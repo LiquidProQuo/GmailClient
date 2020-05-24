@@ -1,4 +1,4 @@
-package com.prolificpixelsoftware.gmail;
+package com.liquidproquo.gmail;
 
 import com.google.api.client.util.Base64;
 import com.google.api.client.util.StringUtils;
